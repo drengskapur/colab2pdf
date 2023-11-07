@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2023-present Drengskapur <service@drengskapur.com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "release"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+
+      - name: Build package
+        run: |
+          pip install --upgrade pip
+          pip install hatch
+          hatch build
+
+      - name: Publish package on PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.10
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}

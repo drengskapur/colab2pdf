@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2023-present Drengskapur <service@drengskapur.com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: CI
+
+"on": [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: placeholder
+        run: echo "To be implemented"
