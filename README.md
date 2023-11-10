@@ -3,7 +3,7 @@
 ## Directions: Copy→Paste→Run [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1zqrIYC0iQ_CZkRqGXgZggrwjtt_4BmpL?usp=sharing)
 
 ```python
-# Colab2PDF v1.0.0 by Drengskapur (github.com/drengskapur/colab2pdf) (License: GPL-3.0-or-later)
+# Colab2PDF v1.0.2 by Drengskapur (github.com/drengskapur/colab2pdf) (License: GPL-3.0-or-later)
 # @title {display-mode:"form"}
 # @markdown ⬇️ Download PDF
 def colab2pdf():
