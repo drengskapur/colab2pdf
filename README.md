@@ -9,7 +9,7 @@
 def colab2pdf():
     ENABLE=True # @param {type:"boolean"}
     if ENABLE:
-        !apt-get install librsvg2-dev
+        !apt-get install librsvg2-bin
         import os, datetime, json, locale, pathlib, urllib, requests, werkzeug, nbformat, google, yaml, warnings
         locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
         NAME = pathlib.Path(werkzeug.utils.secure_filename(urllib.parse.unquote(requests.get(f"http://{os.environ['COLAB_JUPYTER_IP']}:{os.environ['KMP_TARGET_PORT']}/api/sessions").json()[0]["name"])))
