@@ -22,5 +22,5 @@ RUN wget --quiet https://quarto.org/download/latest/quarto-linux-amd64.deb && \
     quarto install tinytex --update-path --quiet && \
     rm quarto-linux-amd64.deb
 
-# Run the colab2pdf command
-CMD ["python", "-m", "colab2pdf.cli", "convert"]
+# Set the default command to start a Bash session
+CMD ["/bin/bash"]

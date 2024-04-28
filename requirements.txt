@@ -1,0 +1,6 @@
+click
+ipywidgets
+nbformat
+PyYAML
+requests
+Werkzeug
