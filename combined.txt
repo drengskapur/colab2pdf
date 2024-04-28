@@ -1,0 +1,1048 @@
+
+---
+./.vscode/settings.json
+
+
+{
+    "yaml.schemas": {
+        "https://json.schemastore.org/yamllint.json": "file:///workspaces/colab2pdf/src/colab2pdf/cli/config.yaml"
+    }
+}
+---
+./requirements.txt
+
+
+
+---
+./tests/test_utils.py
+
+
+import pathlib
+from unittest.mock import patch
+
+from src.colab2pdf.utils import create_output_directory, get_notebook_name
+
+
+@patch("requests.get")
+@patch.dict("os.environ", {"COLAB_JUPYTER_IP": "127.0.0.1", "KMP_TARGET_PORT": "8888"})
+def test_get_notebook_name(mock_requests_get):
+    mock_requests_get.return_value.json.return_value = [{"name": "My%20Notebook.ipynb"}]
+    notebook_name = get_notebook_name()
+    assert notebook_name == "My_Notebook.ipynb"
+
+
+@patch("src.colab2pdf.utils.create_output_directory")
+def test_create_output_directory(mock_create_output_directory, tmp_path):
+    mock_create_output_directory.return_value = tmp_path / "output"
+    notebook_name = "test_notebook"
+    output_dir = create_output_directory(pathlib.Path(notebook_name))
+    assert output_dir.exists()
+    assert output_dir.is_dir()
+    assert output_dir.parent == tmp_path / "pdfs"
+
+---
+./tests/test__widget.py
+
+
+from unittest.mock import MagicMock, patch
+
+from src.colab2pdf.widget import on_convert_click
+
+
+@patch("src.colab2pdf.converter.convert_notebook")
+def test_on_convert_click_success(mock_convert_notebook):
+    button = MagicMock()
+    status_label = MagicMock()
+    config = {}
+
+    on_convert_click(button, status_label, config)
+
+    status_label.value = "⚙️ Converting..."
+    button.disabled = True
+
+    mock_convert_notebook.assert_called_once()
+
+    status_label.value = "🎉 Conversion completed"
+    button.disabled = False
+
+
+@patch("src.colab2pdf.converter.convert_notebook", side_effect=Exception("Test error"))
+def test_on_convert_click_failure(mock_convert_notebook):
+    button = MagicMock()
+    status_label = MagicMock()
+    config = {}
+
+    on_convert_click(button, status_label, config)
+
+    status_label.value = "⚙️ Converting..."
+    button.disabled = True
+    mock_convert_notebook.assert_called_once()
+    status_label.value = "⚠️ ERROR Test error"
+    button.disabled = False
+
+---
+./tests/test_config.py
+
+
+from src.colab2pdf.config import (DEFAULT_CONFIG, PandocOutputFormat,
+                                  TextHighlightingMode)
+
+
+def test_default_config():
+    assert DEFAULT_CONFIG == {
+        "text_highlighting_mode": TextHighlightingMode.LIGHT,
+        "output_format": PandocOutputFormat.PDF,
+        "margin_top": "1in",
+        "margin_bottom": "1in",
+        "margin_left": "1in",
+        "margin_right": "1in",
+        "quiet": False,
+        "verbose": False,
+        "data_dir": "pandoc/datadir",
+        "syntax_definitions_dir": "pandoc/syntax-definitions",
+        "keep_yaml": False,
+        "default_markdown_template": "pandoc/templates/default.markdown",
+        "emoji_image_path": "quarto/emoji",
+    }
+
+
+def test_text_highlighting_mode_enum():
+    assert TextHighlightingMode.LIGHT.value == "light"
+    assert TextHighlightingMode.DARK.value == "dark"
+    assert TextHighlightingMode.NONE.value == "none"
+
+
+def test_pandoc_output_format_enum():
+    assert PandocOutputFormat.PDF.value == "pdf"
+    assert PandocOutputFormat.HTML.value == "html"
+    assert PandocOutputFormat.DOCX.value == "docx"
+    assert PandocOutputFormat.EPUB.value == "epub"
+    assert PandocOutputFormat.LATEX.value == "latex"
+    assert PandocOutputFormat.MARKDOWN.value == "markdown"
+
+---
+./tests/__init__.py
+
+
+
+---
+./tests/test_converter.py
+
+
+import pathlib
+from unittest.mock import patch
+
+import nbformat
+import pytest
+import yaml
+
+from colab2pdf.converter import (create_config_file, get_notebook_cells,
+                                     read_config, save_notebook)
+
+
+@pytest.fixture
+def notebook_cells():
+    return [
+        nbformat.v4.new_code_cell("print('Hello, World!')"),
+        nbformat.v4.new_markdown_cell("# This is a heading"),
+    ]
+
+
+def test_read_config(tmp_path):
+    config_file = tmp_path / "config.yml"
+    config_file.write_text("text_highlighting_mode: dark")
+    config = read_config(str(config_file))
+    assert config["text_highlighting_mode"] == "dark"
+
+
+@patch("src.colab2pdf.converter.google.colab._message")
+def test_get_notebook_cells(mock_colab_message, notebook_cells):
+    mock_blocking_request.return_value = {"ipynb": nbformat.v4.new_notebook(cells=notebook_cells).dict()}
+    cells = get_notebook_cells()
+    assert cells == notebook_cells
+
+
+def test_save_notebook(tmp_path, notebook_cells):
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    notebook_name = pathlib.Path("test_notebook")
+    notebook_path = save_notebook(output_dir, notebook_name, notebook_cells)
+    assert notebook_path.exists()
+    with notebook_path.open("r") as file:
+        notebook = nbformat.read(file, as_version=4)
+        assert notebook.cells == notebook_cells
+
+
+def test_create_config_file(tmp_path):
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    config = {"text_highlighting_mode": "dark"}
+    config_path = create_config_file(output_dir, config)
+    assert config_path.exists()
+    with config_path.open("r") as file:
+        loaded_config = yaml.safe_load(file)
+        assert loaded_config == config
+
+---
+./.github/workflows/publish.yml
+
+
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "release"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+
+      - name: Build package
+        run: |
+          pip install --upgrade pip
+          pip install hatch
+          hatch build
+
+      - name: Publish package on PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.10
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+---
+./.github/workflows/test-publish.yml
+
+
+name: Publish to TestPyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "test-release"
+
+jobs:
+  test-build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+
+      - name: Build package
+        run: |
+          pip install --upgrade pip
+          pip install hatch
+          hatch build
+
+      - name: Publish package on TestPyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.10
+        with:
+          user: __token__
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
+
+---
+./.github/workflows/ci.yml
+
+
+name: CI
+
+"on": [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: placeholder
+        run: echo "To be implemented"
+
+---
+./.github/dependabot.yml
+
+
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+---
+./README.md
+
+
+<img src="https://drengskapur.com/colab2pdf-banner.png" />
+
+## Directions: Copy→Paste→Run
+
+```python
+def colab2pdf():
+    # Colab2PDF by Drengskapur (https://github.com/drengskapur/colab2pdf)
+    # @title Convert Colab Notebook to PDF {display-mode:'form'}
+    # VERSION 1.2
+    # LICENSE: GPL-3.0-or-later
+    !apt-get install -yqq --no-install-recommends librsvg2-bin>/dev/null
+    import contextlib,datetime,google,io,IPython,ipywidgets,json,locale,nbformat,os,pathlib,requests,urllib,warnings,werkzeug,yaml;locale.setlocale(locale.LC_ALL,'en_US.UTF-8')
+    def convert(b):
+        try:
+            s.value='⚙️ Converting...';b.disabled=True;get_ipython().events.register('post_execute',lambda:IPython.display.display(IPython.display.Javascript('document.querySelectorAll("#output-footer").forEach(footer=>footer.remove());')))
+            n=pathlib.Path(werkzeug.utils.secure_filename(urllib.parse.unquote(requests.get(f'http://{os.environ["COLAB_JUPYTER_IP"]}:{os.environ["KMP_TARGET_PORT"]}/api/sessions').json()[0]['name'])))
+            p=pathlib.Path('/content/pdfs')/f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{n.stem}';p.mkdir(parents=True,exist_ok=True);warnings.filterwarnings('ignore',category=nbformat.validator.MissingIDFieldWarning)
+            nb=[cell for cell in nbformat.reads(json.dumps(google.colab._message.blocking_request('get_ipynb',timeout_sec=600)['ipynb']),as_version=4).cells if '--Colab2PDF' not in cell.source]
+            with (p/f'{n.stem}.ipynb').open('w',encoding='utf-8') as cp:nbformat.write(nbformat.v4.new_notebook(cells=nb or [nbformat.v4.new_code_cell('#')]),cp)
+            if not pathlib.Path('/usr/local/bin/quarto').exists():
+                !wget -q 'https://quarto.org/download/latest/quarto-linux-amd64.deb' -P {p} && dpkg -i {p}/quarto-linux-amd64.deb>/dev/null && quarto install tinytex --update-path --quiet
+            with (p/'config.yml').open('w',encoding='utf-8') as f:yaml.dump({'include-in-header':[{'text':r'\usepackage{fvextra}\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaksymbolleft={},showspaces=false,showtabs=false,breaklines,breakanywhere,commandchars=\\\{\}}'}],'include-before-body':[{'text':r'\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaksymbolleft={},showspaces=false,showtabs=false,breaklines}'}]},f)
+            !quarto render {p}/{n.stem}.ipynb --metadata-file={p}/config.yml --to pdf -M latex-auto-install -M margin-top=1in -M margin-bottom=1in -M margin-left=1in -M margin-right=1in --quiet
+            google.colab.files.download(str(p/f'{n.stem}.pdf'));s.value=f'🎉 Downloaded {n.stem}.pdf'
+        except Exception as e:
+            s.value=f'⚠️ ERROR {str(e)}'
+        finally:
+            b.disabled=False
+    b=ipywidgets.widgets.Button(description='⬇️ Download PDF');s=ipywidgets.widgets.Label();b.on_click(lambda b:convert(b));IPython.display.display(ipywidgets.widgets.HBox([b,s]))
+    IPython.display.display(IPython.display.Javascript('document.currentScript.parentElement.closest(".output_subarea").querySelector("#output-footer > input").remove();'))
+colab2pdf()
+```
+
+---
+./pyproject.toml
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "colab2pdf"
+dynamic = ["version"]
+authors = [{ name = "Drengskapur", email = "service@drengskapur.com" }]
+description = 'Convert Your Colab Notebook to a PDF. One-Minute Install. Zero Configuration.'
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development",
+  "Topic :: Utilities",
+]
+
+license = "GPL-3.0-or-later"
+
+
+keywords = [
+  "ai",
+  "artificial-intelligence",
+  "colab",
+  "colab-notebook",
+  "colab-notebooks",
+  "data-science",
+  "deep-learning",
+  "google",
+  "google-colab",
+  "google-colaboratory",
+  "jupyter-notebook",
+  "jupyter-notebooks",
+  "machine-learning",
+  "ml",
+  "pdf",
+  "python",
+  "python3",
+  "pytorch",
+  "tensorflow",
+  "torch",
+]
+
+
+dependencies = [
+  "click",
+  "ipywidgets",
+  "nbformat",
+  "PyYAML",
+  "requests",
+  "requests",
+  "Werkzeug",
+]
+
+
+[project.scripts]
+colab2pdf = "src.colab2pdf.cli:cli"
+
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github", "/.vscode", "/tests"]
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["colab2pdf"]
+
+
+[tool.pytest.ini_options]
+addopts = ["--doctest-modules", "--ignore=setup.py"]
+
+
+[project.urls]
+Documentation = "https://github.com/drengskapur/colab2pdf/README.md"
+Issues = "https://github.com/drengskapur/colab2pdf/issues"
+Source = "https://github.com/drengskapur/colab2pdf"
+
+
+[tool.hatch.version]
+path = "src/colab2pdf/__about__.py"
+
+
+[tool.hatch.envs.default]
+dependencies = ["coverage[toml]>=6.5", "pytest"]
+
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = ["- coverage combine", "coverage report"]
+cov = ["test-cov", "cov-report"]
+
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.7", "3.8", "3.9", "3.10", "3.11"]
+
+
+[tool.hatch.envs.lint]
+detached = true
+dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
+
+
+[tool.hatch.envs.lint.scripts]
+typing = "mypy --install-types --non-interactive {args:src/colab2pdf tests}"
+style = ["ruff {args:.}", "black --check --diff {args:.}"]
+fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
+all = ["style", "typing"]
+
+
+[tool.black]
+target-version = ["py37"]
+line-length = 120
+skip-string-normalization = true
+
+
+[tool.ruff]
+target-version = "py37"
+line-length = 120
+select = [
+  "A",
+  "ARG",
+  "B",
+  "C",
+  "DTZ",
+  "E",
+  "EM",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Ignore checks for possible passwords
+  "S105",
+  "S106",
+  "S107",
+  # Ignore complexity
+  "C901",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+]
+unfixable = [
+  # Don't touch unused imports
+  "F401",
+]
+
+[tool.ruff.isort]
+known-first-party = ["colab2pdf"]
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.coverage.run]
+source_pkgs = ["colab2pdf", "tests"]
+branch = true
+parallel = true
+omit = ["src/colab2pdf/__about__.py"]
+
+[tool.coverage.paths]
+colab2pdf = ["colab2pdf"]
+tests = ["tests"]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+---
+./.pytest_cache/v/cache/nodeids
+
+
+[
+  "tests/test__widget.py::test_on_convert_click_failure",
+  "tests/test__widget.py::test_on_convert_click_success",
+  "tests/test_config.py::test_default_config",
+  "tests/test_config.py::test_pandoc_output_format_enum",
+  "tests/test_config.py::test_text_highlighting_mode_enum",
+  "tests/test_converter.py::test_create_config_file",
+  "tests/test_converter.py::test_get_notebook_cells",
+  "tests/test_converter.py::test_read_config",
+  "tests/test_converter.py::test_save_notebook",
+  "tests/test_utils.py::test_create_output_directory",
+  "tests/test_utils.py::test_get_notebook_name"
+]
+---
+./.pytest_cache/v/cache/stepwise
+
+
+[]
+---
+./.pytest_cache/v/cache/lastfailed
+
+
+{
+  "tests/test__widget.py::test_on_convert_click_success": true,
+  "tests/test__widget.py::test_on_convert_click_failure": true,
+  "tests/test_converter.py::test_get_notebook_cells": true,
+  "tests/test_utils.py::test_create_output_directory": true
+}
+---
+./.pytest_cache/CACHEDIR.TAG
+
+
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+
+---
+./.pytest_cache/.gitignore
+
+
+# Created by pytest automatically.
+*
+
+---
+./.pytest_cache/README.md
+
+
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+
+---
+./src/colab2pdf/__main__.py
+
+
+import sys
+
+if __name__ == "__main__":
+    from src.colab2pdf.cli import colab2pdf
+    sys.exit(colab2pdf())
+
+---
+./src/colab2pdf/config.py
+
+
+from enum import Enum
+
+
+class TextHighlightingMode(Enum):
+    """
+    Enumeration for text highlighting modes.
+
+    :param LIGHT: Light mode.
+    :type LIGHT: str
+    :param DARK: Dark mode.
+    :type DARK: str
+    :param NONE: No highlighting.
+    :type NONE: str
+    """
+
+    LIGHT = "light"
+    DARK = "dark"
+    NONE = "none"
+
+
+class PandocOutputFormat(Enum):
+    """
+    Enumeration for Pandoc output formats.
+
+    :param PDF: PDF format.
+    :type PDF: str
+    :param HTML: HTML format.
+    :type HTML: str
+    :param DOCX: DOCX format.
+    :type DOCX: str
+    :param EPUB: EPUB format.
+    :type EPUB: str
+    :param LATEX: LaTeX format.
+    :type LATEX: str
+    :param MARKDOWN: Markdown format.
+    :type MARKDOWN: str
+    """
+
+    PDF = "pdf"
+    HTML = "html"
+    DOCX = "docx"
+    EPUB = "epub"
+    LATEX = "latex"
+    MARKDOWN = "markdown"
+
+
+DEFAULT_CONFIG = {
+    "text_highlighting_mode": TextHighlightingMode.LIGHT,
+    "output_format": PandocOutputFormat.PDF,
+    "margin_top": "1in",
+    "margin_bottom": "1in",
+    "margin_left": "1in",
+    "margin_right": "1in",
+    "quiet": False,
+    "verbose": False,
+    "data_dir": "pandoc/datadir",
+    "syntax_definitions_dir": "pandoc/syntax-definitions",
+    "keep_yaml": False,
+    "default_markdown_template": "pandoc/templates/default.markdown",
+    "emoji_image_path": "quarto/emoji",
+}
+
+---
+./src/colab2pdf/config.yaml
+
+
+---
+include-in-header:
+  - text: |
+      \usepackage{fvextra}\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaksymbolleft={},showspaces=false,showtabs=false,breaklines,breakanywhere,commandchars=\\\{}}
+
+include-before-body:
+  - text: |
+      \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaksymbolleft={},showspaces=false,showtabs=false,breaklines}
+
+---
+./src/colab2pdf/converter.py
+
+
+import json
+import pathlib
+import warnings
+from typing import List
+
+import nbformat
+import yaml
+from config import DEFAULT_CONFIG
+from utils import create_output_directory, get_notebook_name, install_quarto
+
+
+def read_config(config_file):
+    """
+    Read the configuration from a YAML file.
+
+    :param config_file: The path to the configuration file.
+    :type config_file: str
+    :return: The configuration dictionary.
+    :rtype: dict
+    """
+    if pathlib.Path(config_file).exists():
+        with open(config_file, "r") as file:
+            config = yaml.safe_load(file)
+            return {**DEFAULT_CONFIG, **config}
+    return DEFAULT_CONFIG
+
+
+def get_notebook_cells():
+    """
+    Get the cells of the current notebook.
+
+    :return: A list of notebook cells.
+    :rtype: List[nbformat.NotebookNode]
+    """
+    warnings.filterwarnings('ignore', category=nbformat.validator.MissingIDFieldWarning)
+    ipynb = google.colab._message.blocking_request('get_ipynb', timeout_sec=600)['ipynb']
+    notebook = nbformat.reads(json.dumps(ipynb), as_version=4)
+    cells = [cell for cell in notebook.cells if '--Colab2PDF' not in cell.source]
+    return cells
+
+
+def save_notebook(output_dir, notebook_name, cells):
+    """
+    Save the notebook with the specified cells.
+
+    :param output_dir: The output directory for the notebook.
+    :type output_dir: pathlib.Path
+    :param notebook_name: The name of the notebook.
+    :type notebook_name: pathlib.Path
+    :param cells: The cells to include in the notebook.
+    :type cells: List[nbformat.NotebookNode]
+    :return: The path to the saved notebook.
+    :rtype: pathlib.Path
+    """
+    notebook_filename = f'{notebook_name.stem}.ipynb'
+    notebook_path = output_dir / notebook_filename
+    notebook = nbformat.v4.new_notebook(cells=cells or [nbformat.v4.new_code_cell('#')])
+    with notebook_path.open('w', encoding='utf-8') as file:
+        nbformat.write(notebook, file)
+    return notebook_path
+
+
+def create_config_file(output_dir, config):
+    """
+    Create the configuration file for Quarto.
+
+    :param output_dir: The output directory for the configuration file.
+    :type output_dir: pathlib.Path
+    :param config: The configuration dictionary.
+    :type config: dict
+    :return: The path to the created configuration file.
+    :rtype: pathlib.Path
+    """
+    config_path = output_dir / 'config.yaml'
+    with config_path.open('w', encoding='utf-8') as file:
+        yaml.dump(config, file)
+    return config_path
+
+
+def convert_to_pdf(notebook_path, config_path, output_dir, config):
+    """
+    Convert the notebook to a PDF using Quarto.
+
+    :param notebook_path: The path to the notebook file.
+    :type notebook_path: pathlib.Path
+    :param config_path: The path to the configuration file.
+    :type config_path: pathlib.Path
+    :param output_dir: The output directory for the PDF.
+    :type output_dir: pathlib.Path
+    :param config: The configuration dictionary.
+    :type config: dict
+    :return: The path to the generated PDF.
+    :rtype: pathlib.Path
+    """
+    quarto_command = [
+        'quarto',
+        'render',
+        str(notebook_path),
+        '--to',
+        config['output_format'].value,
+        '--metadata-file',
+        str(config_path),
+        '--metadata',
+        'latex-auto-install',
+        '--metadata',
+        f'margin-top={config["margin_top"]}',
+        '--metadata',
+        f'margin-bottom={config["margin_bottom"]}',
+        '--metadata',
+        f'margin-left={config["margin_left"]}',
+        '--metadata',
+        f'margin-right={config["margin_right"]}',
+    ]
+
+    if config['quiet']:
+        quarto_command.append('--quiet')
+    elif config['verbose']:
+        quarto_command.extend(['--verbose', '--trace'])
+
+    subprocess.run(quarto_command, check=True)
+    pdf_filename = f'{notebook_path.stem}.{config["output_format"].value}'
+    pdf_path = output_dir / pdf_filename
+    return pdf_path
+
+
+def convert_notebook(config_file=None):
+    """
+    Convert the current notebook to PDF.
+
+    :param config_file: The path to the configuration file.
+    :type config_file: str, optional
+    """
+    install_quarto()
+
+    config_data = read_config(config_file) if config_file else DEFAULT_CONFIG
+    notebook_name = pathlib.Path(get_notebook_name())
+    output_dir = create_output_directory(notebook_name)
+    cells = get_notebook_cells()
+    notebook_path = save_notebook(output_dir, notebook_name, cells)
+    config_path = create_config_file(output_dir, config_data)
+    pdf_path = convert_to_pdf(notebook_path, config_path, output_dir, config_data)
+    print(f'PDF generated: {pdf_path}')
+
+---
+./src/colab2pdf/cli/__init__.py
+
+
+import click
+from __about__ import __version__
+from converter import convert_notebook
+from utils import install_dependencies, install_quarto
+from widget import launch_notebook_ui
+
+
+@click.group()
+def cli():
+    """
+    Command-line interface for converting Jupyter notebooks to PDF using Quarto.
+    """
+    pass
+
+
+@cli.command()
+@click.option('--config', type=click.Path(exists=True, dir_okay=False), help='Path to the configuration file (YAML)')
+def convert(config):
+    """
+    Convert the current notebook to PDF.
+
+    :param config: The path to the configuration file.
+    :type config: str, optional
+
+    Examples:
+        $ colab2pdf convert
+        $ colab2pdf convert --config path/to/config.yml
+    """
+    install_dependencies()
+    convert_notebook(config)
+
+
+@cli.command()
+def install():
+    """
+    Install Quarto and its dependencies.
+
+    Examples:
+        $ colab2pdf install
+    """
+    install_dependencies()
+    install_quarto()
+
+
+@cli.command()
+def widget():
+    """
+    Launch the notebook conversion UI.
+
+    Examples:
+        $ colab2pdf widget
+    """
+    install_dependencies()
+    install_quarto()
+    launch_notebook_ui()
+
+---
+./src/colab2pdf/__about__.py
+
+
+__version__ = "1.1.0"
+
+---
+./src/colab2pdf/widget.py
+
+
+from config import DEFAULT_CONFIG
+from converter import convert_notebook
+from IPython import display
+from ipywidgets import widgets
+
+
+def on_convert_click(button, status_label, config):
+    """
+    Handle the click event of the convert button.
+
+    :param button: The convert button.
+    :type button: widgets.Button
+    :param status_label: The label to update with the conversion status.
+    :type status_label: widgets.Label
+    :param config: The configuration dictionary.
+    :type config: dict
+    """
+    try:
+        status_label.value = '⚙️ Converting...'
+        button.disabled = True
+        convert_notebook()
+        status_label.value = '🎉 Conversion completed'
+    except Exception as e:
+        status_label.value = f'⚠️ ERROR {str(e)}'
+    finally:
+        button.disabled = False
+
+
+def launch_notebook_ui():
+    """
+    Launch the notebook conversion UI.
+    """
+    config = DEFAULT_CONFIG
+
+    convert_button = widgets.Button(description='⬇️ Download PDF')
+    status_label = widgets.Label()
+    convert_button.on_click(lambda _: on_convert_click(convert_button, status_label, config))
+
+    display.display(widgets.HBox([convert_button, status_label]))
+
+---
+./src/colab2pdf/utils.py
+
+
+import datetime
+import locale
+import os
+import pathlib
+import subprocess
+import urllib
+
+import requests
+import werkzeug
+
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+
+def install_dependencies():
+    """
+    Install the necessary dependencies using apt-get.
+    """
+    subprocess.run(['apt-get', 'install', '--yes', '--quiet', '--no-install-recommends', 'librsvg2-bin'])
+
+
+def is_quarto_installed():
+    """
+    Check if Quarto is installed.
+
+    :return: True if Quarto is installed, False otherwise.
+    :rtype: bool
+    """
+    return pathlib.Path('/usr/local/bin/quarto').exists()
+
+
+def download_quarto():
+    """
+    Download the Quarto installation package.
+    """
+    subprocess.run(
+        [
+            'wget',
+            '--quiet',
+            'https://quarto.org/download/latest/quarto-linux-amd64.deb',
+            '--directory-prefix',
+            '/content/pdfs',
+        ],
+        check=True,
+    )
+
+
+def install_quarto_package():
+    """
+    Install the Quarto package using dpkg.
+    """
+    subprocess.run(['dpkg', '--install', '/content/pdfs/quarto-linux-amd64.deb'], check=True)
+
+
+def install_tinytex():
+    """
+    Install TinyTeX using Quarto.
+    """
+    subprocess.run(['quarto', 'install', 'tinytex', '--update-path', '--quiet'], check=True)
+
+
+def install_quarto():
+    """
+    Install Quarto and its dependencies if not already installed.
+    """
+    if not is_quarto_installed():
+        download_quarto()
+        install_quarto_package()
+        install_tinytex()
+
+
+def get_notebook_name():
+    """
+    Get the name of the current notebook.
+
+    :return: The secure name of the current notebook.
+    :rtype: str
+    """
+    notebook_session_url = f'http://{os.environ["COLAB_JUPYTER_IP"]}:{os.environ["KMP_TARGET_PORT"]}/api/sessions'
+    response = requests.get(notebook_session_url)
+    notebook_data = response.json()[0]
+    notebook_name = notebook_data['name']
+    unquoted_name = urllib.parse.unquote(notebook_name)
+    secure_name = werkzeug.utils.secure_filename(unquoted_name)
+    return secure_name
+
+
+def create_output_directory(notebook_name):
+    """
+    Create the output directory for the PDF.
+
+    :param notebook_name: The name of the notebook.
+    :type notebook_name: pathlib.Path
+    :return: The path to the output directory.
+    :rtype: pathlib.Path
+    """
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir_name = f'{timestamp}_{notebook_name.stem}'
+    output_dir = pathlib.Path('/content/pdfs') / output_dir_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir

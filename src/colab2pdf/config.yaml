@@ -1,0 +1,8 @@
+---
+include-in-header:
+  - text: |
+      \usepackage{fvextra}\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaksymbolleft={},showspaces=false,showtabs=false,breaklines,breakanywhere,commandchars=\\\{}}
+
+include-before-body:
+  - text: |
+      \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaksymbolleft={},showspaces=false,showtabs=false,breaklines}
