@@ -1,13 +1,15 @@
 {
-    "name": "Colab Local Runtime",
-    "dockerFile": "../Dockerfile",
+    "name": "Google Colab",
+    "dockerFile": "Dockerfile",
+    "context": "..",
     "remoteUser": "root",
     "customizations": {
         "vscode": {
             "settings": {
                 "terminal.integrated.shell.linux": "/bin/bash",
                 "extensions": [
-                    "ms-python.python"
+                    "ms-python.python",
+                    "ms-toolsai.jupyter"
                 ]
             }
         }
