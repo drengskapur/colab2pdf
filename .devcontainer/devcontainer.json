@@ -1,6 +1,6 @@
 {
     "name": "Colab Local Runtime",
-    "dockerFile": "Dockerfile",
+    "dockerFile": "../Dockerfile",
     "remoteUser": "root",
     "customizations": {
         "vscode": {
