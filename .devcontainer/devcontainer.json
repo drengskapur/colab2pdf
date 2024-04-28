@@ -1,7 +1,6 @@
 {
     "name": "Google Colab",
-    "dockerFile": "Dockerfile",
-    "context": "..",
+    "image": "us-docker.pkg.dev/colab-images/public/runtime",
     "remoteUser": "root",
     "customizations": {
         "vscode": {
@@ -17,5 +16,5 @@
     "forwardPorts": [
         9000
     ],
-    "postCreateCommand": "pip install jupyter_http_over_ws==0.0.8 ipykernel"
+    "postCreateCommand": "pip install jupyter_http_over_ws"
 }
