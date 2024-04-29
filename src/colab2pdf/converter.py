@@ -1,14 +1,14 @@
 import json
 import pathlib
-import subprocess
+import sys
 import warnings
 
-import google.colab._message
 import nbformat
 import yaml
 
-from config import DEFAULT_CONFIG
-from utils import create_output_directory, get_notebook_name, install_quarto
+import src.colab2pdf.config
+import src.colab2pdf.pdf_converter
+import src.colab2pdf.utils
 
 
 def read_config(config_file):
@@ -23,22 +23,8 @@ def read_config(config_file):
     if pathlib.Path(config_file).exists():
         with open(config_file) as file:
             config = yaml.safe_load(file)
-            return {**DEFAULT_CONFIG, **config}
-    return DEFAULT_CONFIG
-
-
-def get_notebook_cells():
-    """
-    Get the cells of the current notebook.
-
-    :return: A list of notebook cells.
-    :rtype: List[nbformat.NotebookNode]
-    """
-    warnings.filterwarnings("ignore", category=nbformat.validator.MissingIDFieldWarning)
-    ipynb = google.colab._message.blocking_request("get_ipynb", timeout_sec=600)["ipynb"]
-    notebook = nbformat.reads(json.dumps(ipynb), as_version=4)
-    cells = [cell for cell in notebook.cells if "--Colab2PDF" not in cell.source]
-    return cells
+            return {**src.colab2pdf.config.DEFAULT_CONFIG, **config}
+    return src.colab2pdf.config.DEFAULT_CONFIG
 
 
 def save_notebook(output_dir, notebook_name, cells):
@@ -79,50 +65,34 @@ def create_config_file(output_dir, config):
     return config_path
 
 
-def convert_to_pdf(notebook_path, config_path, output_dir, config):
+def convert_notebook_colab(config):
     """
-    Convert the notebook to a PDF using Quarto.
+    Convert the current notebook to PDF in Google Colab environment.
 
-    :param notebook_path: The path to the notebook file.
-    :type notebook_path: pathlib.Path
-    :param config_path: The path to the configuration file.
-    :type config_path: pathlib.Path
-    :param output_dir: The output directory for the PDF.
-    :type output_dir: pathlib.Path
     :param config: The configuration dictionary.
     :type config: dict
-    :return: The path to the generated PDF.
-    :rtype: pathlib.Path
     """
-    quarto_command = [
-        "quarto",
-        "render",
-        str(notebook_path),
-        "--to",
-        config["output_format"].value,
-        "--metadata-file",
-        str(config_path),
-        "--metadata",
-        "latex-auto-install",
-        "--metadata",
-        f'margin-top={config["margin_top"]}',
-        "--metadata",
-        f'margin-bottom={config["margin_bottom"]}',
-        "--metadata",
-        f'margin-left={config["margin_left"]}',
-        "--metadata",
-        f'margin-right={config["margin_right"]}',
-    ]
+    import google.colab._message
+    warnings.filterwarnings("ignore", category=nbformat.validator.MissingIDFieldWarning)
+    ipynb = google.colab._message.blocking_request("get_ipynb", timeout_sec=600)["ipynb"]
+    notebook_content = json.dumps(ipynb)
+    pdf_path = src.colab2pdf.pdf_converter.convert_notebook_to_pdf(notebook_content, config)
+    print(f"PDF generated: {pdf_path}")
 
-    if config["quiet"]:
-        quarto_command.append("--quiet")
-    elif config["verbose"]:
-        quarto_command.extend(["--verbose", "--trace"])
 
-    subprocess.run(quarto_command, check=True)
-    pdf_filename = f'{notebook_path.stem}.{config["output_format"].value}'
-    pdf_path = output_dir / pdf_filename
-    return pdf_path
+def convert_notebook_standalone(notebook_path, config):
+    """
+    Convert the specified notebook to PDF in standalone environment.
+
+    :param notebook_path: The path to the notebook file.
+    :type notebook_path: str
+    :param config: The configuration dictionary.
+    :type config: dict
+    """
+    with open(notebook_path, "r") as file:
+        notebook_content = file.read()
+    pdf_path = src.colab2pdf.pdf_converter.convert_notebook_to_pdf(notebook_content, config)
+    print(f"PDF generated: {pdf_path}")
 
 
 def convert_notebook(config_file=None):
@@ -132,13 +102,14 @@ def convert_notebook(config_file=None):
     :param config_file: The path to the configuration file.
     :type config_file: str, optional
     """
-    install_quarto()
+    src.colab2pdf.utils.install_quarto()
+    config_data = read_config(config_file) if config_file else src.colab2pdf.config.DEFAULT_CONFIG
 
-    notebook_name = pathlib.Path(get_notebook_name())
-    output_dir = create_output_directory(notebook_name)
-    cells = get_notebook_cells()
-    config_data = read_config(config_file) if config_file else DEFAULT_CONFIG
-    notebook_path = save_notebook(output_dir, notebook_name, cells)
-    config_path = create_config_file(output_dir, config_data)
-    pdf_path = convert_to_pdf(notebook_path, config_path, output_dir, config_data)
-    print(f"PDF generated: {pdf_path}")
+    if "google.colab" in sys.modules:
+        import google.colab._message
+        convert_notebook_colab(config_data)
+    else:
+        notebook_name = pathlib.Path(src.colab2pdf.utils.get_notebook_name())
+        output_dir = src.colab2pdf.utils.create_output_directory(notebook_name)
+        notebook_path = output_dir / f"{notebook_name.stem}.ipynb"
+        convert_notebook_standalone(str(notebook_path), config_data)

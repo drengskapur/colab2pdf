@@ -5,17 +5,11 @@ on:
   branch_protection_rule:
   # To guarantee Maintained check is occasionally updated. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
+  pull_request: {}
+  push: {}
   schedule:
     - cron: "0 */12 * * *"
-
-  workflow_dispatch:
-
-  push:
-    branches:
-      - develop
-      - hotfix/*
-      - main
-      - release/*
+  workflow_dispatch: {}
 
 # Declare default permissions as read only.
 permissions: read-all

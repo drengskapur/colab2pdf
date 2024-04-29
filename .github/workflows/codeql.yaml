@@ -1,21 +1,11 @@
 name: "CodeQL"
 
 on:
-  push:
-    branches:
-      - main
-      - stage
-      - develop
-
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches:
-      - main
-      - stage
-      - develop
-
+  pull_request: {}
+  push: {}
   schedule:
     - cron: "0 0 * * 1"
+  workflow_dispatch: {}
 
 permissions:
   contents: read

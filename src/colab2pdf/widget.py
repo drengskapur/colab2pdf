@@ -3,8 +3,9 @@ import sys
 from IPython import display
 from ipywidgets import widgets
 
-from converter import convert_notebook
-from utils import get_notebook_name
+import src.colab2pdf.converter
+import src.colab2pdf.pdf_converter
+import src.colab2pdf.utils
 
 
 def on_convert_click(button, status_label, config):
@@ -13,12 +14,9 @@ def on_convert_click(button, status_label, config):
         button.disabled = True
 
         try:
-            convert_notebook(config["notebook_name"])
-        except ValueError as e:
-            if "expected str, bytes or os.PathLike object, not dict" in str(e):
-                error_message = "Invalid file path or name provided."
-            else:
-                error_message = str(e)
+            src.colab2pdf.converter.convert_notebook(config)
+        except Exception as e:
+            error_message = str(e)
             print(f"Error: {error_message}", file=sys.stderr)
             status_label.value = f"⚠️ ERROR: {error_message}"
         else:
@@ -36,6 +34,6 @@ def launch_notebook_ui():
     """
     convert_button = widgets.Button(description="⬇️ Download PDF")
     status_label = widgets.Label()
-    config = {"notebook_name": get_notebook_name()}
+    config = {"notebook_name": src.colab2pdf.utils.get_notebook_name()}
     convert_button.on_click(lambda _: on_convert_click(convert_button, status_label, config))
     display.display(widgets.HBox([convert_button, status_label]))

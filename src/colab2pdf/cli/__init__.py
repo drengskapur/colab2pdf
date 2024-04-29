@@ -1,9 +1,9 @@
+import __about__
 import click
-
-from __about__ import __version__
-from converter import convert_notebook
-from utils import install_dependencies, install_quarto
-from widget import launch_notebook_ui
+import config
+import converter
+import utils
+import widget
 
 
 @click.group()
@@ -31,8 +31,8 @@ def convert(config):
         Convert the current notebook to PDF using the specified configuration file.
     """
     try:
-        install_dependencies()
-        convert_notebook(config)
+        utils.install_dependencies()
+        converter.convert_notebook(config)
     except Exception as e:
         click.echo(f"An error occurred during conversion: {e!s}", err=True)
         raise click.ClickException(str(e))
@@ -47,8 +47,8 @@ def install():
       $ colab2pdf install
         Install Quarto and its dependencies.
     """
-    install_dependencies()
-    install_quarto()
+    utils.install_dependencies()
+    utils.install_quarto()
 
 
 @cli.command()
@@ -60,6 +60,26 @@ def widget():
       $ colab2pdf widget
         Launch the notebook conversion UI.
     """
-    install_dependencies()
-    install_quarto()
-    launch_notebook_ui()
+    utils.install_dependencies()
+    utils.install_quarto()
+    widget.launch_notebook_ui()
+
+
+@click.command()
+def colab2pdf_colab():
+    """
+    Convert the current notebook to PDF in the Google Colab environment.
+    """
+    converter.convert_notebook_colab(config)
+
+
+@click.command()
+@click.argument("notebook_path", type=click.Path(exists=True))
+def colab2pdf_standalone(notebook_path):
+    """
+    Convert the specified notebook to PDF in a standalone environment.
+
+    Args:
+        notebook_path (str): Path to the notebook file.
+    """
+    converter.convert_notebook_standalone(notebook_path, config)

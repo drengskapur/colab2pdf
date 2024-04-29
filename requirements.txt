@@ -1,7 +1,8 @@
-git+https://github.com/googlecolab/colabtools.git#egg=google-colab
 click==8.1.7
+git+https://github.com/googlecolab/colabtools.git#egg=google-colab
 hatch==1.9.7
 ipywidgets==8.1.2
+isort==5.13.2
 nbformat==5.10.4
 pytest==8.2.0
 PyYAML==6.0.1
