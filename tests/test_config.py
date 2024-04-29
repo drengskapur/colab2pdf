@@ -1,5 +1,4 @@
-from src.colab2pdf.config import (DEFAULT_CONFIG, PandocOutputFormat,
-                                  TextHighlightingMode)
+from src.colab2pdf.config import DEFAULT_CONFIG, PandocOutputFormat, TextHighlightingMode
 
 
 def test_default_config():

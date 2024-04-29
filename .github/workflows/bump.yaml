@@ -1,0 +1,61 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - develop
+      - hotfix/*
+      - main
+      - release/*
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
+
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
+        with:
+          fetch-depth: "0"
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Bump version
+        run: |
+          branch=${GITHUB_REF##*/}
+          case $branch in
+            release/*)
+              segment="rc"
+              ;;
+            hotfix/*)
+              segment="patch"
+              ;;
+            develop)
+              segment="minor"
+              ;;
+            main)
+              segment="release"
+              ;;
+            *)
+              echo "Unknown branch: $branch. Skipping version bump."
+              exit 0
+              ;;
+          esac
+          hatch version $segment
+
+      - name: Commit and push version bump
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "Bump version"
+          git push

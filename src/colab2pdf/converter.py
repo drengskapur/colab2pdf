@@ -1,10 +1,12 @@
 import json
 import pathlib
+import subprocess
 import warnings
-from typing import List
 
+import google.colab._message
 import nbformat
 import yaml
+
 from config import DEFAULT_CONFIG
 from utils import create_output_directory, get_notebook_name, install_quarto
 
@@ -19,7 +21,7 @@ def read_config(config_file):
     :rtype: dict
     """
     if pathlib.Path(config_file).exists():
-        with open(config_file, "r") as file:
+        with open(config_file) as file:
             config = yaml.safe_load(file)
             return {**DEFAULT_CONFIG, **config}
     return DEFAULT_CONFIG
@@ -32,10 +34,10 @@ def get_notebook_cells():
     :return: A list of notebook cells.
     :rtype: List[nbformat.NotebookNode]
     """
-    warnings.filterwarnings('ignore', category=nbformat.validator.MissingIDFieldWarning)
-    ipynb = google.colab._message.blocking_request('get_ipynb', timeout_sec=600)['ipynb']
+    warnings.filterwarnings("ignore", category=nbformat.validator.MissingIDFieldWarning)
+    ipynb = google.colab._message.blocking_request("get_ipynb", timeout_sec=600)["ipynb"]
     notebook = nbformat.reads(json.dumps(ipynb), as_version=4)
-    cells = [cell for cell in notebook.cells if '--Colab2PDF' not in cell.source]
+    cells = [cell for cell in notebook.cells if "--Colab2PDF" not in cell.source]
     return cells
 
 
@@ -52,10 +54,10 @@ def save_notebook(output_dir, notebook_name, cells):
     :return: The path to the saved notebook.
     :rtype: pathlib.Path
     """
-    notebook_filename = f'{notebook_name.stem}.ipynb'
+    notebook_filename = f"{notebook_name.stem}.ipynb"
     notebook_path = output_dir / notebook_filename
-    notebook = nbformat.v4.new_notebook(cells=cells or [nbformat.v4.new_code_cell('#')])
-    with notebook_path.open('w', encoding='utf-8') as file:
+    notebook = nbformat.v4.new_notebook(cells=cells or [nbformat.v4.new_code_cell("#")])
+    with notebook_path.open("w", encoding="utf-8") as file:
         nbformat.write(notebook, file)
     return notebook_path
 
@@ -71,8 +73,8 @@ def create_config_file(output_dir, config):
     :return: The path to the created configuration file.
     :rtype: pathlib.Path
     """
-    config_path = output_dir / 'config.yaml'
-    with config_path.open('w', encoding='utf-8') as file:
+    config_path = output_dir / "config.yaml"
+    with config_path.open("w", encoding="utf-8") as file:
         yaml.dump(config, file)
     return config_path
 
@@ -93,29 +95,29 @@ def convert_to_pdf(notebook_path, config_path, output_dir, config):
     :rtype: pathlib.Path
     """
     quarto_command = [
-        'quarto',
-        'render',
+        "quarto",
+        "render",
         str(notebook_path),
-        '--to',
-        config['output_format'].value,
-        '--metadata-file',
+        "--to",
+        config["output_format"].value,
+        "--metadata-file",
         str(config_path),
-        '--metadata',
-        'latex-auto-install',
-        '--metadata',
+        "--metadata",
+        "latex-auto-install",
+        "--metadata",
         f'margin-top={config["margin_top"]}',
-        '--metadata',
+        "--metadata",
         f'margin-bottom={config["margin_bottom"]}',
-        '--metadata',
+        "--metadata",
         f'margin-left={config["margin_left"]}',
-        '--metadata',
+        "--metadata",
         f'margin-right={config["margin_right"]}',
     ]
 
-    if config['quiet']:
-        quarto_command.append('--quiet')
-    elif config['verbose']:
-        quarto_command.extend(['--verbose', '--trace'])
+    if config["quiet"]:
+        quarto_command.append("--quiet")
+    elif config["verbose"]:
+        quarto_command.extend(["--verbose", "--trace"])
 
     subprocess.run(quarto_command, check=True)
     pdf_filename = f'{notebook_path.stem}.{config["output_format"].value}'
@@ -132,11 +134,11 @@ def convert_notebook(config_file=None):
     """
     install_quarto()
 
-    config_data = read_config(config_file) if config_file else DEFAULT_CONFIG
     notebook_name = pathlib.Path(get_notebook_name())
     output_dir = create_output_directory(notebook_name)
     cells = get_notebook_cells()
+    config_data = read_config(config_file) if config_file else DEFAULT_CONFIG
     notebook_path = save_notebook(output_dir, notebook_name, cells)
     config_path = create_config_file(output_dir, config_data)
     pdf_path = convert_to_pdf(notebook_path, config_path, output_dir, config_data)
-    print(f'PDF generated: {pdf_path}')
+    print(f"PDF generated: {pdf_path}")
