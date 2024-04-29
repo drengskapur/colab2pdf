@@ -1,10 +1,7 @@
 name: Scorecard supply-chain security
-on:
-  # For Branch-Protection check. Only the default branch is supported. See
-  # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
+
+"on":
   branch_protection_rule:
-  # To guarantee Maintained check is occasionally updated. See
-  # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   pull_request:
     branches:
       - main
@@ -15,7 +12,6 @@ on:
     - cron: "0 */12 * * *"
   workflow_dispatch: {}
 
-# Declare default permissions as read only.
 permissions: read-all
 
 jobs:
@@ -23,9 +19,7 @@ jobs:
     name: Scorecard analysis
     runs-on: ubuntu-latest
     permissions:
-      # Needed to upload the results to code-scanning dashboard.
       security-events: write
-      # Needed to publish results and get a badge (see publish_results below).
       id-token: write
 
     steps:
@@ -56,13 +50,8 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
-          # Public repositories:
-          #   - Publish results to OpenSSF REST API for easy access by consumers
-          #   - Allows the repository to include the Scorecard badge.
-          #   - See https://github.com/ossf/scorecard-action#publishing-results.
           publish_results: true
 
-      # Upload the results to GitHub's code scanning dashboard.
       - name: "Upload to code-scanning"
         uses: github/codeql-action/upload-sarif@379614612a29c9e28f31f39a59013eb8012a51f0 # v3.24.3
         with:
