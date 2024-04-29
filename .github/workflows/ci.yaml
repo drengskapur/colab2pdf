@@ -2,14 +2,11 @@ name: CI
 
 "on":
   pull_request:
-    branches:
-      - develop
-      - hotfix/*
+    types: [opened]
   push:
     branches:
       - develop
       - feature/*
-      - hotfix/*
   workflow_dispatch: {}
 
 concurrency:
