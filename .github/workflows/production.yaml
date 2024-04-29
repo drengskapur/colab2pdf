@@ -32,7 +32,12 @@ jobs:
         run: pip install hatch
 
       - name: Bump version
-        run: hatch version release
+        run: |
+          if [[ "${{ github.head_ref }}" == hotfix/* ]]; then
+            hatch version patch
+          else
+            hatch version release
+          fi
 
       - name: Commit and push version bump
         run: |
