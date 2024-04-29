@@ -1,7 +1,6 @@
 name: Scorecard supply-chain security
 
 "on":
-  branch_protection_rule:
   pull_request:
     branches:
       - main
@@ -10,7 +9,6 @@ name: Scorecard supply-chain security
       - main
   schedule:
     - cron: "0 */12 * * *"
-  workflow_dispatch: {}
 
 permissions: read-all
 
