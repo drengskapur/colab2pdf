@@ -35,6 +35,4 @@ jobs:
         run: pip install hatch
 
       - name: Test
-        run: |
-          hatch shell
-          hatch run test
+        run: python3 -m hatch run test
