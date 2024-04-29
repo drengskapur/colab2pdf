@@ -1,4 +1,4 @@
-name: Bump Version
+name: Bump Dev Version
 
 "on":
   pull_request:
@@ -10,7 +10,7 @@ name: Bump Version
       - develop
 
 jobs:
-  bump-version:
+  bump-dev-version:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true || github.event_name == 'push'
     steps:
