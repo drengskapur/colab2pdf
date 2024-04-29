@@ -1,14 +1,15 @@
-name: CI
+name: Test
 
 "on":
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
+
   push:
     branches:
       - develop
       - feature/*
-      - release/*
-      - main
+
+  workflow_dispatch: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
@@ -41,8 +42,10 @@ jobs:
             echo "Hotfix branches must be based on the 'main' branch."
             exit 1
           fi
+
   lint:
     runs-on: ubuntu-latest
+    needs: enforce-gitflow
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
@@ -58,6 +61,50 @@ jobs:
         uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
         with:
           fetch-depth: "0"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye-up.com/get | RYE_VERSION="0.33.0" RYE_INSTALL_OPTION="--yes" bash
+          echo "$HOME/.rye/shims" >> $GITHUB_PATH
+        env:
+          RYE_VERSION: 0.33.0
+          RYE_INSTALL_OPTION: "--yes"
+
+      - name: Install dependencies
+        run: rye sync --all-features
+
+      - name: Run ruff
+        run: rye run check:ruff
+
+      - name: Run type checking
+        run: rye run typecheck
+
+      - name: Ensure importable
+        run: rye run python -c 'import openai'
+
+  yaml-lint:
+    runs-on: ubuntu-latest
+    needs: enforce-gitflow
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
+
+      - name: Checkout repository
+        uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
+        with:
+          fetch-depth: "0"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -76,7 +123,9 @@ jobs:
         run: yamllint .
 
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
+    needs: enforce-gitflow
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
@@ -92,6 +141,7 @@ jobs:
         uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
         with:
           fetch-depth: "0"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -103,7 +153,8 @@ jobs:
         run: python3 -m hatch run test
 
   analyze:
-    name: Analyze
+    name: Perform CodeQL Analysis
+    needs: enforce-gitflow
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -132,6 +183,7 @@ jobs:
         uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
         with:
           fetch-depth: "0"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@379614612a29c9e28f31f39a59013eb8012a51f0 # v3.24.3
@@ -147,6 +199,7 @@ jobs:
           category: "/language:${{matrix.language}}"
 
   dependency-review:
+    needs: enforce-gitflow
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -163,6 +216,7 @@ jobs:
         uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
         with:
           fetch-depth: "0"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: "Dependency Review (feature -> develop)"
         uses: actions/dependency-review-action@c74b580d73376b7750d3d2a50bfb8adc2c937507 # v3.1.5

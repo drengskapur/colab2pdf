@@ -1,24 +1,19 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "colab2pdf"
 dynamic = ["version"]
-authors = [{ name = "Drengskapur", email = "service@drengskapur.com" }]
 description = 'Convert Your Colab Notebook to a PDF. One-Minute Install. Zero Configuration.'
 readme = "README.md"
-requires-python = ">=3.7"
-classifiers = [
-  'Intended Audience :: Developers',
-  'License :: OSI Approved :: Apache Software License',
-  'Operating System :: POSIX',
-  'Operating System :: Microsoft :: Windows',
-  'Operating System :: MacOS :: MacOS X',
-  'Operating System :: OS Independent',
-  'Topic :: Internet :: WWW/HTTP',
-]
 license = "GPL-3.0-or-later"
+authors = [{ name = "Drengskapur", email = "service@drengskapur.com" }]
+dependencies = [
+  "click",
+  "ipywidgets",
+  "nbformat",
+  "PyYAML",
+  "requests",
+  "Werkzeug",
+]
+requires-python = ">=3.10"
 keywords = [
   "ai",
   "artificial-intelligence",
@@ -41,45 +36,89 @@ keywords = [
   "tensorflow",
   "torch",
 ]
-
-
-dependencies = [
-  "click",
-  "ipywidgets",
-  "nbformat",
-  "pytest",
-  "PyYAML",
-  "requests",
-  "requests",
-  "Werkzeug",
+classifiers = [
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: Apache Software License',
+  'Operating System :: POSIX',
+  'Operating System :: Microsoft :: Windows',
+  'Operating System :: MacOS :: MacOS X',
+  'Operating System :: OS Independent',
+  'Topic :: Internet :: WWW/HTTP',
 ]
+[project.urls]
+Homepage = "https://github.com/drengskapur/colab2pdf/"
+Repository = "https://github.com/drengskapur/colab2pdf/"
 
 [project.scripts]
-colab2pdf = "src.colab2pdf.cli:cli"
+colab2pdf = "colab2pdf.__main__:main"
 
-[tool.hatch.build.targets.sdist]
-exclude = ["/.github", "/.vscode", "/tests"]
+[tool.rye]
+managed = true
+dev-dependencies = [
+  "pyright>=1.1.359",
+  "google-colab",
+  "mypy",
+  "pytest",
+  "ruff",
+]
+
+[tool.rye.scripts]
+format = { chain = ["format:ruff", "format:docs", "fix:ruff"] }
+"format:black" = "black ."
+"format:docs" = "README.md"
+"format:ruff" = "ruff format"
+"format:isort" = "isort ."
+"lint" = { chain = ["check:ruff", "typecheck"] }
+"check:ruff" = "ruff ."
+"fix:ruff" = "ruff --fix ."
+typecheck = { chain = ["typecheck:pyright", "typecheck:mypy"] }
+"typecheck:pyright" = "pyright"
+"typecheck:verify-types" = "pyright --verifytypes openai --ignoreexternal"
+"typecheck:mypy" = "mypy ."
+
+[build-system]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = ["src/*"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/colab2pdf"]
 
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github", "/.vscode", "/tests"]
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\[(.+?)\]\(((?!https?://)\S+?)\)'
+replacement = '[\1](https://github.com/drengskapur/colab2pdf/tree/main/\g<2>)'
+
 [tool.pytest.ini_options]
-addopts = ["--doctest-modules", "--ignore=setup.py"]
+testpaths = ["tests"]
+addopts = "--tb=short"
+xfail_strict = true
+asyncio_mode = "auto"
+filterwarnings = ["error"]
 
-
-[project.urls]
-Documentation = "https://github.com/drengskapur/colab2pdf/README.md"
-Issues = "https://github.com/drengskapur/colab2pdf/issues"
-Source = "https://github.com/drengskapur/colab2pdf"
-
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.10"
+exclude = [".venv", ".nox"]
+reportImplicitOverride = true
+reportImportCycles = false
+reportPrivateUsage = false
 
 [tool.hatch.version]
 path = "src/colab2pdf/__about__.py"
 
-
 [tool.hatch.envs.default]
 dependencies = ["coverage[toml]>=6.5", "pytest"]
-
 
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
@@ -87,99 +126,42 @@ test-cov = "coverage run -m pytest {args:tests}"
 cov-report = ["- coverage combine", "coverage report"]
 cov = ["test-cov", "cov-report"]
 
-
 [[tool.hatch.envs.all.matrix]]
-python = ["3.7", "3.8", "3.9", "3.10", "3.11"]
-
-
-[tool.hatch.envs.lint]
-detached = true
-dependencies = ["black==24.4.2", "mypy==1.10.0", "ruff==0.4.2"]
-
-
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/colab2pdf tests}"
-style = ["ruff {args:.}", "black --check --diff {args:.}"]
-fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
-all = ["style", "typing"]
-
-
-[tool.black]
-target-version = ["py37"]
-line-length = 120
-skip-string-normalization = true
-
+python = ["3.10"]
 
 [tool.ruff]
-target-version = "py37"
 line-length = 120
+output-format = "grouped"
+target-version = "py310"
 select = [
-  "A",
-  "ARG",
-  "B",
-  "C",
-  "DTZ",
-  "E",
-  "EM",
-  "F",
-  "FBT",
-  "I",
-  "ICN",
-  "ISC",
-  "N",
-  "PLC",
-  "PLE",
-  "PLR",
-  "PLW",
-  "Q",
-  "RUF",
-  "S",
-  "T",
-  "TID",
-  "UP",
-  "W",
-  "YTT",
+  "I",      # ISORT
+  "B",      # BUGBEAR RULES
+  "F401",   # REMOVE UNUSED IMPORTS
+  "E722",   # BARE EXCEPT STATEMENTS
+  "ARG",    # UNUSED ARGUMENTS
+  "T201",   # PRINT STATEMENTS
+  "T203",   # PPRINT STATEMENTS
+  "TCH004", # MISUSE of typing.TYPE_CHECKING
+  "TID251", # IMPORT RULES
 ]
 ignore = [
-  # Allow non-abstract empty methods in abstract base classes
-  "B027",
-  # Allow boolean positional values in function calls, like `dict.get(... True)`
-  "FBT003",
-  # Ignore checks for possible passwords
-  "S105",
-  "S106",
-  "S107",
-  # Ignore complexity
-  "C901",
-  "PLR0911",
-  "PLR0912",
-  "PLR0913",
-  "PLR0915",
+  "B006", # MUTABLE DEFAULTS
 ]
 unfixable = [
-  # Don't touch unused imports
-  "F401",
+  "T201", # DISABLE FIX FOR PRINT STATEMENTS
+  "T203", # DISABLE FIX FOR PPRINT STATEMENTS
 ]
+ignore-init-module-imports = true
 
-[tool.ruff.isort]
-known-first-party = ["colab2pdf"]
+[tool.ruff.format]
+docstring-code-format = true
 
-[tool.ruff.flake8-tidy-imports]
-ban-relative-imports = "all"
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"functools.lru_cache".msg = "This function does not retain type information for the wrapped function's arguments; The `lru_cache` function from `_utils` should be used instead"
 
-[tool.ruff.per-file-ignores]
-# Tests can use magic values, assertions, and relative imports
-"tests/**/*" = ["PLR2004", "S101", "TID252"]
-
-[tool.coverage.run]
-source_pkgs = ["colab2pdf", "tests"]
-branch = true
-parallel = true
-omit = ["src/colab2pdf/__about__.py"]
-
-[tool.coverage.paths]
-colab2pdf = ["colab2pdf"]
-tests = ["tests"]
-
-[tool.coverage.report]
-exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+[tool.ruff.lint.isort]
+length-sort = true
+length-sort-straight = true
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+known-first-party = ["openai", "tests"]

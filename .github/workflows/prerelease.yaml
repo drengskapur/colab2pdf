@@ -1,0 +1,59 @@
+name: Prerelease
+
+"on":
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
+
+      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
+        with:
+          fetch-depth: "0"
+          ref: release
+
+      - name: Setup Python
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+
+      - name: Bump Version
+        run: |
+          pip install hatch
+          hatch version rc
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "Bump version"
+          git push
+
+      - name: Build and publish to TestPyPI
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          pip install hatch
+          hatch build
+          hatch publish -r test
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2.0.4
+        with:
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

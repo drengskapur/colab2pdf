@@ -1,4 +1,4 @@
-name: Bump Dev Version
+name: Merge Feature
 
 "on":
   pull_request:
@@ -10,9 +10,8 @@ name: Bump Dev Version
       - develop
 
 jobs:
-  bump-dev-version:
+  bump-version:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true || github.event_name == 'push'
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
@@ -27,15 +26,12 @@ jobs:
       - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.1
         with:
           fetch-depth: "0"
+          ref: develop
 
-      - name: Install Hatch
-        run: pip install hatch
-
-      - name: Bump version
-        run: hatch version dev
-
-      - name: Commit and push version bump
+      - name: Bump Version
         run: |
+          pip install hatch
+          hatch version dev
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .
