@@ -1,14 +1,14 @@
 name: Enforce Gitflow
 
-on:
+"on":
   pull_request:
     types: [opened, synchronize, reopened]
   push:
     branches:
-      - main
-      - develop
-      - "release/*"
       - "hotfix/*"
+      - "release/*"
+      - develop
+      - main
 
 jobs:
   enforce-gitflow:
