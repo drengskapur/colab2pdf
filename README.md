@@ -6,7 +6,7 @@
 def colab2pdf():
     # Colab2PDF by Drengskapur (https://github.com/drengskapur/colab2pdf)
     # @title Convert Colab Notebook to PDF {display-mode:'form'}
-    # VERSION 1.3
+    # VERSION 1.4
     # LICENSE: GPL-3.0-or-later
     !apt-get install -yqq --no-install-recommends librsvg2-bin>/dev/null
     import contextlib,datetime,google,io,IPython,ipywidgets,json,locale,nbformat,os,pathlib,requests,urllib,warnings,werkzeug,yaml;locale.setlocale(locale.LC_ALL,'en_US.UTF-8')
@@ -25,7 +25,7 @@ def colab2pdf():
         finally:
             b.disabled=False
     if not pathlib.Path('/usr/local/bin/quarto').exists():
-        !wget -q 'https://quarto.org/download/latest/quarto-linux-amd64.deb' -P {p} && dpkg -i {p}/quarto-linux-amd64.deb>/dev/null && quarto install tinytex --update-path --quiet
+        !wget -q 'https://quarto.org/download/latest/quarto-linux-amd64.deb' && dpkg -i quarto-linux-amd64.deb>/dev/null && quarto install tinytex --update-path --quiet && rm quarto-linux-amd64.deb
     b=ipywidgets.widgets.Button(description='⬇️ Download PDF');s=ipywidgets.widgets.Label();b.on_click(lambda b:convert(b));IPython.display.display(ipywidgets.widgets.HBox([b,s]))
     IPython.display.display(IPython.display.Javascript('document.currentScript.parentElement.closest(".output_subarea").querySelector("#output-footer > input").remove();'))
 colab2pdf()
