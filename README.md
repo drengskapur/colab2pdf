@@ -6,7 +6,7 @@
 def colab2pdf():
     # Colab2PDF by Drengskapur (https://github.com/drengskapur/colab2pdf)
     # @title Convert Colab Notebook to PDF {display-mode:'form'}
-    # VERSION 1.4
+    # VERSION 1.5
     # LICENSE: GPL-3.0-or-later
     !apt-get install -yqq --no-install-recommends librsvg2-bin>/dev/null
     import contextlib, datetime, google, io, IPython, ipywidgets, json, locale, nbformat, os, pathlib, requests, urllib, warnings, werkzeug, yaml; locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
