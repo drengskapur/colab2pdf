@@ -204,7 +204,7 @@ def colab2pdf():
    - The current notebook content is retrieved using the Colab API and read into a `nbformat` notebook object.
 
 1. **Check for Broken Image URLs:**
-   - The function checks for broken image URLs in markdown cells. If any broken URLs are found, an exception is raised.
+   - The function checks for broken image URLs in markdown cells. If any broken URLs are found, an exception is raised. This check is necessary because broken image URLs can cause a silent error and cut off the PDF at the point of the broken image link.
 
 1. **Remove Specific Cells:**
    - Cells containing `--Colab2PDF` in their source are removed from the notebook. This is done to ensure that the code for the `colab2pdf` function itself is not included in the final PDF. The string `--Colab2PDF` acts as a marker to identify and remove these cells.
