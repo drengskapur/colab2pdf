@@ -35,9 +35,8 @@ colab2pdf() # | Colab2PDF v1.6 | https://github.com/drengskapur/colab2pdf | GPL-
 
 ```python
 def colab2pdf():
-    """
-    This function allows users to download their Google Colab notebook as a PDF file.
-    It installs necessary dependencies, converts the notebook to PDF, and provides a download link.
+    """Download Google Colab notebook as a PDF.
+    colab2pdf installs dependencies, converts notebook to PDF, and provides a download link.
     """
     # Install necessary system package for PDF conversion
     !apt-get install -yqq --no-install-recommends librsvg2-bin > /dev/null  # Install librsvg2-bin for SVG conversion
@@ -107,9 +106,7 @@ def colab2pdf():
 
 ```python
     def convert(button):
-        """
-        Convert the current notebook to PDF and provide a download link.
-        """
+        """Convert the current notebook to PDF and provide a download link."""
         try:
             # Update button status to indicate conversion is in progress
             status_label.value = '🔄 Converting'  # Update status label
@@ -242,8 +239,19 @@ def colab2pdf():
         !dpkg -i quarto-linux-amd64.deb > /dev/null  # Install Quarto
         !quarto install tinytex --update-path --quiet  # Install TinyTeX
         !rm quarto-linux-amd64.deb  # Remove Quarto package
-    # Checking if Quarto is installed by verifying the existence of the Quarto binary. If Quarto is not installed, it is downloaded and installed using wget and dpkg. TinyTeX is installed using Quarto to ensure LaTeX dependencies are met. The downloaded Quarto package is removed after installation.
 ```
+
+1. **Check if Quarto is Installed:**
+   - The function checks if Quarto is installed by verifying the existence of the Quarto binary.
+
+1. **Download and Install Quarto:**
+   - If Quarto is not installed, it is downloaded using `wget` and installed using `dpkg`.
+
+1. **Install TinyTeX:**
+   - TinyTeX is installed using Quarto to ensure LaTeX dependencies are met.
+
+1. **Remove Quarto Package:**
+   - The downloaded Quarto package is removed after installation.
 
 ### Create and Display UI Elements
 
@@ -259,8 +267,7 @@ def colab2pdf():
     IPython.display.display(ipywidgets.widgets.HBox([download_button, status_label]))  # Display UI elements
 
 # Call the function to display the download button
-colab2pdf()  # | Colab2PDF v1.6 | https://github.com/drengskapur/colab2pdf | GPL-3.0-or-later |
-# Calling the colab2pdf function to display the download button and initialize the process.
+colab2pdf()
 ```
 
 1. **Create UI Elements:**
