@@ -206,8 +206,8 @@ def colab2pdf():
 1. **Check for Broken Image URLs:**
    - The function checks for broken image URLs in markdown cells. If any broken URLs are found, an exception is raised. This check is necessary because broken image URLs can cause a silent error and cut off the PDF at the point of the broken image link.
 
-1. **Remove Specific Cells:**
-   - Cells containing `--Colab2PDF` in their source are removed from the notebook. This is done to ensure that the code for the `colab2pdf` function itself is not included in the final PDF. The string `--Colab2PDF` acts as a marker to identify and remove these cells.
+1. **Remove Colab2PDF Code from PDF:**
+   - Cells containing `--Colab2PDF` in their source are removed from the notebook. This is done to ensure that the `colab2pdf` code itself is not included in the final PDF. The string `--Colab2PDF` acts as a marker to identify it.
 
 1. **Create New Notebook:**
    - A new notebook is created with the filtered cells, and it is normalized using `nbformat.validator.normalize`.
