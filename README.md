@@ -1,5 +1,3 @@
-<img src="https://drengskapur.com/colab2pdf-banner.png" />
-
 ## Directions: Copy→Paste→Run
 
 ```python
